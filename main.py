@@ -7,7 +7,7 @@ recognizer = sr.Recognizer()
 
 # to convert text back into robotic speech
 # TODO turn this into the expressive voice later
- speech_engine = pyttsx3.init()
+speech_engine = pyttsx3.init()
 
 while (True): 
 
