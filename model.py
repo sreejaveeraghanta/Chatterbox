@@ -1,112 +1,59 @@
-# Dataset from Kaggle: https://www.kaggle.com/datasets/dmitrybabko/speech-emotion-recognition-en?resource=download
-# Used the datasets Ravdess and Crema to train our model
-
-#TODO delete DEBUGGING sections after model is trained
-# imports
-import os
 import torch 
-import librosa
-import torchaudio 
-import numpy as np
-from sklearn.model_selection import train_test_split
+import torch.nn as nn
+import torch.optim as optim 
+from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix, accuracy_score, ConfusionMatrixDisplay
 
-ravdess = './data/Ravdess/audio_speech_actors_01-24'
-crema = "./data/Crema"
-
-#TODO: if not using later on, delete these lines of code (no need for a device)
-## For cuda
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-## For apple silicon 
-# device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-
-
-################ DATA PROCESSING ################ 
-# Process Ravdess dataseti (numerical labelling)
-""" Emotion (01 = neutral, 02 = calm, 03 = happy, 04 = sad, 05 = angry, 06 = fearful, 07 = disgust, 08 = surprised) """
-
-ravdess_emotions = {"1":"neutral", "2":"calm", "3":"happy", "4":"sad", "5":"angry", "6":"fearful", "7":"disgust", "8":"surprised"}
-
-ravdess_audio_files = [] 
-ravdess_audio_labels = [] 
-for directory in os.listdir(ravdess):
-    folder_path = os.path.join(ravdess, directory)
-    for file in os.listdir(folder_path): 
-        ravdess_audio_files.append(os.path.join(folder_path,file))
-        ravdess_audio_labels.append(file.split("-")[2][1])
-
-# Process the Crema dataset (string labelling)
-"""
-SAD - sadness;
-ANG - angry;
-DIS - disgust;
-FEA - fear;
-HAP - happy;
-NEU - neutral.
-"""
-crema_emotions = {"NEU":"neutral", "HAP":"happy", "SAD":"sad", "ANG":"angry", "FEA":"fearful", "DIS":"disgust"}
-crema_audio_files = [] 
-crema_audio_labels = []
-for file in os.listdir(crema):
-    crema_audio_files.append(os.path.join(crema,file))
-    crema_audio_labels.append(file.split("_")[2])
-
-# Getting train and test sets
-# 80-20 split because this is a smaller dataset
-ravdess_train_x, ravdess_test_x, ravdess_train_y, ravdess_test_y = train_test_split(
-        ravdess_audio_files, ravdess_audio_labels, test_size=0.20, random_state=42)
-
-# 70-30 split because this dataset is larger
-crema_train_x, crema_test_x, crema_train_y, crema_test_y = train_test_split(
-        crema_audio_files, crema_audio_labels, test_size=0.30, random_state=42)
-
-print("done loading datasets")
-################ FEATURE EXTRACTION ################ 
-#TODO extract useful features from the audio files (mel spectogram) 
-# values that are useful from the
-
-#General speech/music processing	sr=22050 (default)
-def extract_mel_spectrogram(file_path, sr=22050, n_mels=128, hop_length=512):
-    """Extracts a Mel spectrogram from an audio file using librosa."""
-    #loading the audio files 
-    print(file_path)
-    y, sr = librosa.load(file_path, sr=sr)
-    #compute mel spectrogram
-    mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels, hop_length=hop_length)
-    #power to db
-    mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max) 
-    return mel_spec_db
-   
-#store the ravdess labels 
-
-## This takes a while to do, because the datasets are large, and we are loading up two datasets
-for i, file in enumerate(ravdess_train_x): 
-    ravdess_train_x[i] = extract_mel_spectrogram(file)
-
-for i, file in enumerate(ravdess_test_x): 
-    ravdess_test_x[i] = extract_mel_spectrogram(file)
-
-for i, file in enumerate(crema_train_x): 
-    crema_train_x[i] = extract_mel_spectrogram(file)
-
-for i, file in enumerate(crema_test_x): 
-    crema_test_x[i] = extract_mel_spectrogram(file)
-
-print(crema_train_x) 
-
-print("done feature extraction")
+class LSTM_Model(nn.Module): 
+    def __init__(self, input_size=128, hidden_size=256, num_layer=2, num_classes=8, dropout=0.2):
+        super(LSTM_Model, self).__init__()
+        self.LSTM = nn.LSTM(input_size, hidden_size, num_layer, dropout=dropout, batch_first=True)
+        self.Linear = nn.Linear(hidden_size, num_classes)
+    def forward(self, x): 
+        x, _ = self.LSTM(x)
+        x = x[:, -1, :]
+        x = self.Linear(x)
+        return x
 
 
+def train(dataset_x, dataset_y, num_classes): 
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    model = LSTM_Model(num_classes=num_classes).to(device) 
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    for e in range(20): 
+        accuracy = 0
+        total_loss = 0
+        model.train()
+        dataset_x, dataset_y = dataset_x.to(device), dataset_y.to(device)
+        optimizer.zero_grad()
+        outputs = model(dataset_x)
+        loss = criterion(outputs, dataset_y)
+        loss.backward()
+        optimizer.step()
 
-################ MODEL SET UP ################ 
-# Train a model and save the trained model
-# Get predictions based on the saved model
-def predict(audio_data): 
-    #TODO fit the model after training and return the correct label from the model
-    return ""
+        total_loss += loss.item()
+        predicted = torch.argmax(outputs, 1)
+        epoch_loss = total_loss/len(dataset_x)
+        accuracy += (predicted == dataset_y).sum().item()
+        accuracy = (accuracy / len(dataset_y)) * 100
+        print(f"Epoch[{e+1}/{20}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2f}%")
+
+    torch.save(model.state_dict(), f'./models/speech_recognition_model.pth')
+
+## TODO finish this to run the saved model on the test dataset for evaluating
+def eval(dataset_x, dataset_y, num_classes): 
+    model = LSTM_Model(num_classes=num_classes)
+    model.load_state_dict(torch.load("./models/speech_recognition_model.pth"))
+    model.eval()
+    predictions = [] 
+    true_labels = [] 
+    with torch.no_grad(): 
+        output = model(dataset_x)
+        print(output)
+
+    print(f"Test Accuracy: {accuracy_score(true_labels, output)*100:.2f}%")
 
 
-
-
-
-
-
+def predict(audio_file): 
+    #TODO predict the emotion given the audio
+    return "Neutral"
