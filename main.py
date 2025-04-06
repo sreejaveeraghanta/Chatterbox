@@ -1,18 +1,18 @@
 import speech_recognition as sr
-import pyttsx3
-import pyaudio
+from gtts import gTTS
+from pygame import mixer
 
 # for speech recognition from microphone
 recognizer = sr.Recognizer()
 
 # to convert text back into robotic speech
-# TODO turn this into the expressive voice later
-speech_engine = pyttsx3.init()
+mixer.init()
 
 while (True): 
 
-    with sr.Microphone() as source1: 
-        audio = recognizer.listen(source1) 
+    with sr.Microphone() as source: 
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source) 
         try: 
             text = recognizer.recognize_google(audio)
             print("The text from you", text)
@@ -24,8 +24,11 @@ while (True):
         if  text == "stop": 
             break
 
-        speech_engine.say(text) 
-        speech_engine.runAndWait()
+        speech = gTTS(text)
+        speech.save("response.mp3")
+        mixer.music.load("response.mp3")
+        mixer.music.play()
+
 
 
 
