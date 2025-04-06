@@ -6,6 +6,8 @@ from pygame import mixer
 recognizer = sr.Recognizer()
 
 # to convert text back into robotic speech
+pygame.init()
+screen = pygame.display
 mixer.init()
 
 while (True): 
