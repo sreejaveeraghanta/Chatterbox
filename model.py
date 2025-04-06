@@ -7,8 +7,19 @@ import os
 import torch 
 import librosa
 import torchaudio 
+import transformers
+import datasets
+import tokenizers
 import numpy as np
 from sklearn.model_selection import train_test_split
+#that pretrained model example https://huggingface.co/ehcalabres/wav2vec2-lg-xlsr-en-speech-emotion-recognition?
+# Load model directly
+from transformers import pipeline
+
+pipe = pipeline(
+    "audio-classification",
+    model="ehcalabres/wav2vec2-lg-xlsr-en-speech-emotion-recognition"
+)
 
 ravdess = './data/Ravdess/audio_speech_actors_01-24'
 crema = "./data/Crema"
@@ -105,14 +116,14 @@ crema_train_x, crema_test_x, crema_train_y, crema_test_y = train_test_split(
 
 print("done feature extraction")
 
-
-
 ################ MODEL SET UP ################ 
 # Train a model and save the trained model
 # Get predictions based on the saved model
-def predict(audio_data): 
-    #TODO fit the model after training and return the correct label from the model
-    return ""
+def predict(audio_path):
+    result = pipe(audio_path)
+    if result:
+        return result[0]['label']
+    return "Unknown"
 
 
 
