@@ -77,18 +77,18 @@ def extract_mel_spectrogram(file_path, sr=22050, n_mels=128, hop_length=512):
     mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels, hop_length=hop_length)
     #power to db
     mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max) 
-    if mel_spec_db.shape[1] > 130: 
-        mel_spec_db = mel_spec_db[:, :130]
-    if mel_spec_db.shape[1] < 130: 
-        padding = 130 - mel_spec_db.shape[1]
+    if mel_spec_db.shape[1] > 128: 
+        mel_spec_db = mel_spec_db[:, :128]
+    if mel_spec_db.shape[1] < 128: 
+        padding = 128 - mel_spec_db.shape[1]
         mel_spec_db = np.pad(mel_spec_db, ((0,0), (0, padding)), mode='constant')
     return mel_spec_db
    
 #store the ravdess labels 
 
 ## This takes a while to do, because the datasets are large, and we are loading up two datasets
-ravdess_train_features = torch.zeros((len(ravdess_train_x), 128, 130), dtype=torch.float32)
-ravdess_test_features = torch.zeros((len(ravdess_test_x), 128, 130), dtype=torch.float32)
+ravdess_train_features = torch.zeros((len(ravdess_train_x), 128, 128), dtype=torch.float32)
+ravdess_test_features = torch.zeros((len(ravdess_test_x), 128, 128), dtype=torch.float32)
 
 crema_train_featueres = []
 crema_train_featueres = []
@@ -113,8 +113,12 @@ print("Finished feature extraction")
 # Train a model and save the trained model
 # Get predictions based 
 print("Started training")
-train(ravdess_train_features, torch.tensor(ravdess_train_y, dtype=torch.long),9)
+# train(ravdess_train_features, torch.tensor(ravdess_train_y, dtype=torch.long),9)
 print("Finished training")
+
+print("Started testing")
+eval(ravdess_test_features, torch.tensor(ravdess_test_y, dtype=torch.long),9)
+print("Finished testing")
 
 
 

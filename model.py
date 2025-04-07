@@ -20,7 +20,7 @@ def train(dataset_x, dataset_y, num_classes):
     model = LSTM_Model(num_classes=num_classes).to(device) 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    for e in range(20): 
+    for e in range(150): 
         accuracy = 0
         total_loss = 0
         model.train()
@@ -36,7 +36,7 @@ def train(dataset_x, dataset_y, num_classes):
         epoch_loss = total_loss/len(dataset_x)
         accuracy += (predicted == dataset_y).sum().item()
         accuracy = (accuracy / len(dataset_y)) * 100
-        print(f"Epoch[{e+1}/{20}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2f}%")
+        print(f"Epoch[{e+1}/{150}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2f}%")
 
     torch.save(model.state_dict(), f'./models/speech_recognition_model.pth')
 
@@ -46,14 +46,16 @@ def eval(dataset_x, dataset_y, num_classes):
     model.load_state_dict(torch.load("./models/speech_recognition_model.pth"))
     model.eval()
     predictions = [] 
-    true_labels = [] 
     with torch.no_grad(): 
         output = model(dataset_x)
-        print(output)
-
-    print(f"Test Accuracy: {accuracy_score(true_labels, output)*100:.2f}%")
+        _, prediction = torch.max(output, 1)
+        print(f"Test Accuracy: {accuracy_score(dataset_y, prediction)*100:.2f}%")  
 
 
 def predict(audio_file): 
-    #TODO predict the emotion given the audio
-    return "Neutral"
+    model = LSTM_Model(num_classes=1)
+    model.load_state_dict(torch.load("./models/speech_recognition_model.pth"))
+    model.eval()
+    with torch.no_grad(): 
+        output = model(audio_file)
+    return output
