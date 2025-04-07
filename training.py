@@ -90,8 +90,9 @@ def extract_mel_spectrogram(file_path, sr=22050, n_mels=128, hop_length=512):
 ravdess_train_features = torch.zeros((len(ravdess_train_x), 128, 128), dtype=torch.float32)
 ravdess_test_features = torch.zeros((len(ravdess_test_x), 128, 128), dtype=torch.float32)
 
-crema_train_featueres = []
-crema_train_featueres = []
+crema_train_features = torch.zeros((len(crema_train_x), 128, 128), dtype=torch.float32)
+crema_test_features = torch.zeros((len(crema_test_x), 128, 128), dtype=torch.float32)
+
 
 print("Started feature extraction")
 for i, file in enumerate(ravdess_train_x): 
@@ -103,17 +104,17 @@ for i, file in enumerate(ravdess_test_x):
 
 #TODO uncomment when training the whole thing
 # for i, file in enumerate(crema_train_x): 
-    # crema_train_x[i] = extract_mel_spectrogram(file)
+#     crema_train_x[i] = extract_mel_spectrogram(file)
 
 # for i, file in enumerate(crema_test_x): 
-    # crema_test_x[i] = extract_mel_spectrogram(file)
-print("Finished feature extraction")
+#     crema_test_x[i] = extract_mel_spectrogram(file)
+# print("Finished feature extraction")
 
 ################ TRAINING THE MODEL ################ 
 # Train a model and save the trained model
 # Get predictions based 
 print("Started training")
-# train(ravdess_train_features, torch.tensor(ravdess_train_y, dtype=torch.long),9)
+train(ravdess_train_features, torch.tensor(ravdess_train_y, dtype=torch.long),9, 256)
 print("Finished training")
 
 print("Started testing")

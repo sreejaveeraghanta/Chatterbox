@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim 
 from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix, accuracy_score, ConfusionMatrixDisplay
+from matplotlib import pyplot as plt
 
 class LSTM_Model(nn.Module): 
     def __init__(self, input_size=128, hidden_size=256, num_layer=2, num_classes=8, dropout=0.2):
@@ -10,17 +11,17 @@ class LSTM_Model(nn.Module):
         self.Linear = nn.Linear(hidden_size, num_classes)
     def forward(self, x): 
         x, _ = self.LSTM(x)
-        x = x[:, -1, :]
+        x = x[-1, :]
         x = self.Linear(x)
         return x
 
 
-def train(dataset_x, dataset_y, num_classes): 
+def train(dataset_x, dataset_y, num_classes, hidden_size): 
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    model = LSTM_Model(num_classes=num_classes).to(device) 
+    model = LSTM_Model(hidden_size=hidden_size, num_classes=num_classes).to(device) 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    for e in range(150): 
+    for e in range(100): 
         accuracy = 0
         total_loss = 0
         model.train()
@@ -36,7 +37,7 @@ def train(dataset_x, dataset_y, num_classes):
         epoch_loss = total_loss/len(dataset_x)
         accuracy += (predicted == dataset_y).sum().item()
         accuracy = (accuracy / len(dataset_y)) * 100
-        print(f"Epoch[{e+1}/{150}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2f}%")
+        print(f"Epoch[{e+1}/{100}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2f}%")
 
     torch.save(model.state_dict(), f'./models/speech_recognition_model.pth')
 
@@ -51,11 +52,19 @@ def eval(dataset_x, dataset_y, num_classes):
         _, prediction = torch.max(output, 1)
         print(f"Test Accuracy: {accuracy_score(dataset_y, prediction)*100:.2f}%")  
 
+        confusions = confusion_matrix(dataset_y, prediction)
+        print(confusions)
+        matrix = ConfusionMatrixDisplay(confusion_matrix=confusions)
+        matrix.plot()
+        plt.savefig('./matrix.png')
+
 
 def predict(audio_file): 
-    model = LSTM_Model(num_classes=1)
+    model = LSTM_Model(num_classes=9)
     model.load_state_dict(torch.load("./models/speech_recognition_model.pth"))
     model.eval()
     with torch.no_grad(): 
         output = model(audio_file)
-    return output
+        print(output)
+        _, prediction = torch.max(output, 1)
+    return prediction
