@@ -6,6 +6,10 @@ import librosa.display
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import OneHotEncoder
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, LSTM, Dropout
+from sklearn.preprocessing import OneHotEncoder
+
 
 ravdess = './data/Ravdess/audio_speech_actors_01-24'
 
@@ -60,37 +64,30 @@ def extract_mfcc(filename):
     mfcc = np.mean(librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40).T, axis=0)
     return mfcc
 
-# Apply feature extraction to all files in the dataset
+#apply feature extraction to all files in the dataset
 X_mfcc = df['speech'].apply(lambda x: extract_mfcc(x))
 
-# Convert list to numpy array
+#convert list to numpy
 X = np.array([x for x in X_mfcc])
 
-# Reshape X for LSTM input
+#make x work with LSTM
 X = np.expand_dims(X, -1)
 
-# One-hot encode the labels
+#ENCODE lables using one hot
+enc = OneHotEncoder()
+y = enc.fit_transform(df[['label']])
+y = y.toarray()
+#test
+print(X.shape, y.shape)
+#Onehot encode the labels
 enc = OneHotEncoder()
 y = enc.fit_transform(df[['label']])
 y = y.toarray()
 
-# Check the shapes
+#check
 print(X.shape, y.shape)
 
-
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, Dropout
-from sklearn.preprocessing import OneHotEncoder
-
-# One-hot encode the labels (8 emotion categories)
-enc = OneHotEncoder()
-y = enc.fit_transform(df[['label']])
-y = y.toarray()  # Ensures `y` has the correct shape (num_samples, 8)
-
-# Check the shapes
-print(X.shape, y.shape)  # X should be (num_samples, 40, 1), y should be (num_samples, 8)
-
-# Build the LSTM model
+#LSTM MODEL USED
 model = Sequential([
     LSTM(256, return_sequences=False, input_shape=(40, 1)),
     Dropout(0.2),
@@ -101,12 +98,11 @@ model = Sequential([
     Dense(8, activation='softmax')  # 8 emotion categories
 ])
 
-# Compile the model
+#COMPILE MODEL
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-# Model summary
 model.summary()
 
-# Train the model
+# Train
 history = model.fit(X, y, validation_split=0.2, epochs=50, batch_size=64)
 
