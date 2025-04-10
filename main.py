@@ -25,15 +25,17 @@ recognizer = sr.Recognizer()
 
 # to convert text back into robotic speech
 pygame.init()
-screen = pygame.display
+screen = pygame.display.set_mode((600, 600))
+pygame.display.set_caption("CHATTERBOX")
 mixer.init()
 
 for i, name in enumerate(sr.Microphone.list_microphone_names()):
     print(i,":", name)
 
 mic_ind = int(input("select microphone index from list: "))
-file = './1001_IOM_SAD_XX.wav'
+file = './1002_DFA_ANG_XX.wav'
 features = torch.tensor(extract_mel_spectrogram(file), dtype=torch.float32)
+print(features)
 
 emotion = predict(features)
 print(emotion)
@@ -46,7 +48,22 @@ def get_response(prompt):
         messages=[{'role': "user", "content": prompt}])
     return response.choices[0].message.content.strip()
 
-while (True): 
+running = True
+while (running): 
+    # for event in pygame.event.get(): 
+    #     if event.type == pygame.QUIT: 
+    #         running = False
+    # screen.fill((0,0,0))
+    if (emotion == "angry"):
+        image = pygame.image.load('./emojis/anger.png')
+        image = pygame.transform.scale(image, (400, 400))
+
+    else: 
+        image = pygame.image.load('./emojis/neutral.png')
+        image = pygame.transform.scale(image, (400, 400))
+
+    # screen.blit(image, (100, 100))
+    # pygame.display.flip()
     with sr.Microphone(device_index=mic_ind) as source: 
         recognizer.adjust_for_ambient_noise(source)
         audio = recognizer.listen(source) 
@@ -57,14 +74,17 @@ while (True):
             print("wating for you to say something")
             continue
         if  text == "stop": 
+            running = False
             break
 
         response = get_response(text)
 
-        speech = gTTS(response)
+        speech = gTTS(response, slow=False)
         speech.save("response.mp3")
         mixer.music.load("response.mp3")
         mixer.music.play()
+pygame.quit()
+
 
 
 

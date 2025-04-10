@@ -11,7 +11,7 @@ class LSTM_Model(nn.Module):
         self.Linear = nn.Linear(hidden_size, num_classes)
     def forward(self, x): 
         x, _ = self.LSTM(x)
-        x = x[-1, :]
+        x = x[:, -1, :]
         x = self.Linear(x)
         return x
 
@@ -66,5 +66,6 @@ def predict(audio_file):
     with torch.no_grad(): 
         output = model(audio_file)
         print(output)
-        _, prediction = torch.max(output, 1)
-    return prediction
+        _, prediction = torch.max(output,0)
+    ravdess_emotions = {"1":"neutral", "2":"calm", "3":"happy", "4":"sad", "5":"angry", "6":"fearful", "7":"disgust", "8":"surprised"}
+    return ravdess_emotions[str(prediction.item())]
