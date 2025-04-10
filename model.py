@@ -1,125 +1,112 @@
-# imports
 import os
-import torch
-import librosa
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
-from transformers import Wav2Vec2FeatureExtractor, Wav2Vec2ForSequenceClassification
-# Load feature extractor and model
-feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained("r-f/wav2vec-english-speech-emotion-recognition")
-model = Wav2Vec2ForSequenceClassification.from_pretrained("r-f/wav2vec-english-speech-emotion-recognition")
+import pandas as pd
+import librosa
+import librosa.display
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import OneHotEncoder
 
-# Define directories for the datasets
 ravdess = './data/Ravdess/audio_speech_actors_01-24'
-crema = "./data/Crema"
 
-# For CUDA or Apple Silicon
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#mapping emotion codes to labels
+ravdess_emotions = {
+    "01": "neutral",
+    "02": "calm",
+    "03": "happy",
+    "04": "sad",
+    "05": "angry",
+    "06": "fearful",
+    "07": "disgust",
+    "08": "surprised"
+}
 
-# Dataset processing for Ravdess
-ravdess_emotions = {"1": "neutral", "2": "calm", "3": "happy", "4": "sad", "5": "angry", "6": "fearful", "7": "disgust", "8": "surprised"}
 ravdess_audio_files = []
 ravdess_audio_labels = []
 
-# Process Ravdess files
+#go through the ravdess dataset
 for directory in os.listdir(ravdess):
     folder_path = os.path.join(ravdess, directory)
-    for file in os.listdir(folder_path):
-        ravdess_audio_files.append(file)
-        ravdess_audio_labels.append(file.split("-")[2][1])
+    if os.path.isdir(folder_path):
+        print(f"Exploring folder: {folder_path}")
+        for file in os.listdir(folder_path):
+            if file.endswith('.wav'):
+                ravdess_audio_files.append(os.path.join(folder_path, file))
+                emotion_code = file.split("-")[2]
+                if emotion_code in ravdess_emotions:
+                    ravdess_audio_labels.append(ravdess_emotions[emotion_code])
+                else:
+                    print(f"Warning: Unknown emotion code {emotion_code} in file {file}")
+                print(f"Found file: {file}, Emotion: {ravdess_emotions.get(emotion_code, 'Unknown')}")
 
-# Dataset processing for Crema
-crema_emotions = {"NEU": "neutral", "HAP": "happy", "SAD": "sad", "ANG": "angry", "FEA": "fearful", "DIS": "disgust"}
-crema_audio_files = []
-crema_audio_labels = []
+#check the loaded files
+print(f"Loaded {len(ravdess_audio_files)} audio files.")
+print(f"First 5 files: {ravdess_audio_files[:5]}")
+print(f"First 5 labels: {ravdess_audio_labels[:5]}")
 
-# Process Crema files
-for file in os.listdir(crema):
-    crema_audio_files.append(file)
-    crema_audio_labels.append(file.split("_")[2])
+paths = ravdess_audio_files
+labels = ravdess_audio_labels
+#make df
+df = pd.DataFrame()
+df['speech'] = paths
+df['label'] = labels
 
-# Feature extraction: Mel spectrogram
-def extract_mel_spectrogram(file_path, sr=22050, n_mels=128, hop_length=512):
-    """Extracts a Mel spectrogram from an audio file using librosa."""
-    y, sr = librosa.load(file_path, sr=sr)
-    mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels, hop_length=hop_length)
-    mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
-    return mel_spec_db
 
-# Extract features from Ravdess
-ravdess_features = []
-ravdess_labels = []
-for directory in os.listdir(ravdess):
-    folder_path = os.path.join(ravdess, directory)
-    for file in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, file)
-        emotion_label = file.split('-')[2][1]
-        mel_spec = extract_mel_spectrogram(file_path)
-        if mel_spec is not None:
-            ravdess_features.append(mel_spec)
-            ravdess_labels.append(emotion_label)
+print(df['label'].value_counts())
 
-# etract features from Crema
-crema_features = []
-crema_labels = []
-for file in os.listdir(crema):
-    file_path = os.path.join(crema, file)
-    emotion_label = file.split('_')[2]
-    mel_spec = extract_mel_spectrogram(file_path)
-    if mel_spec is not None:
-        crema_features.append(mel_spec)
-        crema_labels.append(emotion_label)
+#featyre exrtraction using le
+def extract_mfcc(filename):
+    y, sr = librosa.load(filename, duration=3, offset=0.5)
+    mfcc = np.mean(librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40).T, axis=0)
+    return mfcc
 
-# Split datasets
-ravdess_train_x, ravdess_test_x, ravdess_train_y, ravdess_test_y = train_test_split(
-    ravdess_audio_files, ravdess_audio_labels, test_size=0.20, random_state=42)
-crema_train_x, crema_test_x, crema_train_y, crema_test_y = train_test_split(
-    crema_audio_files, crema_audio_labels, test_size=0.30, random_state=42)
+# Apply feature extraction to all files in the dataset
+X_mfcc = df['speech'].apply(lambda x: extract_mfcc(x))
 
-def predict_emotion(file_path, model, feature_extractor, device):
-    #load file sample rate for Wav2Vec2
-    speech, sr = librosa.load(file_path, sr=16000)
+# Convert list to numpy array
+X = np.array([x for x in X_mfcc])
 
-    #extract features
-    inputs = feature_extractor(speech, sampling_rate=16000, return_tensors="pt", padding=True)
+# Reshape X for LSTM input
+X = np.expand_dims(X, -1)
 
-    #move inpust to devide
-    inputs = {k: v.to(device) for k, v in inputs.items()}
-    model.to(device)
-    model.eval()
+# One-hot encode the labels
+enc = OneHotEncoder()
+y = enc.fit_transform(df[['label']])
+y = y.toarray()
 
-    #prediction with model
-    with torch.no_grad():
-        logits = model(**inputs).logits
-        predicted_class_id = torch.argmax(logits).item()
+# Check the shapes
+print(X.shape, y.shape)
 
-    return model.config.id2label[predicted_class_id]
 
-# Evaluate model on the test set
-y_true = []
-y_pred = []
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, LSTM, Dropout
+from sklearn.preprocessing import OneHotEncoder
 
-#attemps to go through Ravdess test set
-for file_name, label in zip(ravdess_test_x, ravdess_test_y):
-    file_path = None
-    for folder in os.listdir(ravdess):
-        folder_path = os.path.join(ravdess, folder)
-        candidate_path = os.path.join(folder_path, file_name)
-        if os.path.exists(candidate_path):
-            file_path = candidate_path
-            break
+# One-hot encode the labels (8 emotion categories)
+enc = OneHotEncoder()
+y = enc.fit_transform(df[['label']])
+y = y.toarray()  # Ensures `y` has the correct shape (num_samples, 8)
 
-    if file_path is not None:
-        true_emotion = ravdess_emotions.get(label)
-        predicted_emotion = predict_emotion(file_path, model, feature_extractor, device)
+# Check the shapes
+print(X.shape, y.shape)  # X should be (num_samples, 40, 1), y should be (num_samples, 8)
 
-        y_true.append(true_emotion)
-        y_pred.append(predicted_emotion)
-    else:
-        print(f"File not found: {file_name}")
+# Build the LSTM model
+model = Sequential([
+    LSTM(256, return_sequences=False, input_shape=(40, 1)),
+    Dropout(0.2),
+    Dense(128, activation='relu'),
+    Dropout(0.2),
+    Dense(64, activation='relu'),
+    Dropout(0.2),
+    Dense(8, activation='softmax')  # 8 emotion categories
+])
 
-#callification report
-print("Accuracy:", accuracy_score(y_true, y_pred))
-print("\nClassification Report:\n")
-print(classification_report(y_true, y_pred))
+# Compile the model
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+# Model summary
+model.summary()
+
+# Train the model
+history = model.fit(X, y, validation_split=0.2, epochs=50, batch_size=64)
+
