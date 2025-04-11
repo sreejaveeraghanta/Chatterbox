@@ -16,18 +16,34 @@ crema = "./data/Crema"
 ## For apple silicon 
 device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
+## Train and test the model on the ravdess dataset
+# print("Training on the ravdess dataset")
+# df = process_ravdess_data()
+# train_loader, test_loader = get_dataLoaders(df, batch_size=64)
+# print("training")
+# train(train_loader, num_classes=8, epochs=100)
+# print("testing")
+# eval(test_loader, num_classes=8)
 
-print("loading data loaders")
+
+# Train and test the model on the crema dataset
+print("Training on the crema dataset")
 df = process_crema_data()
-train_loader, test_loader = get_dataLoaders(df, 64)
+train_loader, test_loader = get_dataLoaders(df, batch_size=64)
+print("training")
+train(train_loader, num_classes=6, epochs=50)
+print("testing")
+eval(test_loader, num_classes=6)
 
-print("starting training")
-train(train_loader, num_classes=8, epochs=50)
-print("Done training")
 
-print("started evaluating")
-eval(test_loader, num_classes=8)
-print("Done evaluating")
+# ## Train and test the model on both datasets combined
+# print("Training on both datasets")
+# df = process_both_datasets()
+# train_loader, test_loader = get_dataLoaders(df, 64)
+# print("training")
+# train(train_loader, num_classes=8, epochs=30)
+# print("testing")
+# eval(test_loader, num_classes=8)
 
 
 

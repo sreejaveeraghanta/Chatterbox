@@ -8,25 +8,40 @@ class LSTM_Model(nn.Module):
     def __init__(self, num_classes):
         super(LSTM_Model, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, stride=1)
+        self.bn1 = nn.BatchNorm2d(32)
         self.activation1 = nn.ReLU()
         self.maxPool1 = nn.MaxPool2d(2, 2)
-        self.dropout1 = nn.Dropout(0.4)
+        self.dropout1 = nn.Dropout(0.3)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1)
+        self.bn2 = nn.BatchNorm2d(64)
         self.activation2 = nn.ReLU()
         self.maxPool2 = nn.MaxPool2d(2, 2)
         self.dropout2 = nn.Dropout(0.2)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1)
+        self.bn3 = nn.BatchNorm2d(128)
+        self.activation3 = nn.ReLU()
+        self.maxPool3 = nn.MaxPool2d(2, 2)
+        self.dropout3 = nn.Dropout(0.1)
 
-        self.LSTM = nn.LSTM(64*8, 128, 2, dropout=0.3, batch_first=True)
-        self.Linear = nn.Linear(128, num_classes)
+        self.LSTM = nn.LSTM(128*3, 256, 2, dropout=0.3, batch_first=True) 
+        self.Linear = nn.Linear(256, num_classes)
 
     def forward(self, x):
-        batch_size, channels, length, timesteps = x.size()
         x = self.conv1(x)
+        x = self.bn1(x)
         x = self.activation1(x)
         x = self.maxPool1(x)
+        x = self.dropout1(x)
         x = self.conv2(x)
+        x = self.bn2(x)
         x = self.activation2(x)
         x = self.maxPool2(x)
+        x = self.dropout2(x)
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = self.activation3(x)
+        x = self.maxPool3(x)
+        x =self.dropout3(x)
         x = x.view(x.size(0), x.size(3), -1)
         x, _ = self.LSTM(x)
         x = x[:, -1, :]
@@ -39,7 +54,7 @@ def train(train_loader, num_classes, epochs):
 
     model = LSTM_Model(num_classes=num_classes).to(device) 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.00001)
     for epoch in range(epochs): 
         model.train() 
         running_loss = 0.0

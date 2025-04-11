@@ -6,9 +6,10 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 
 def get_mfcc(audio_file):
-    y, sr = librosa.load(audio_file, duration=3, offset=0.5)
+    y, sr = librosa.load(audio_file, duration=5, offset=0.5)
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40)
     mfcc = librosa.util.fix_length(mfcc, size=128, axis=1)
+    ## normlize the features
     mfcc = (mfcc - np.mean(mfcc))/(np.std(mfcc))
     return mfcc
 
@@ -28,6 +29,7 @@ def create_train_test_sets(data_frame):
     y_train = torch.tensor(np.array(y_train), dtype=torch.long)
     y_test = torch.tensor(np.array(y_test), dtype=torch.long)
 
+    ## get the correct shape of the data
     x_train = x_train.unsqueeze(1)
     x_test = x_test.unsqueeze(1)
 
