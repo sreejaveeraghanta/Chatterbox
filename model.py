@@ -5,58 +5,90 @@ from sklearn.metrics import precision_score, recall_score, f1_score, confusion_m
 from matplotlib import pyplot as plt
 
 class LSTM_Model(nn.Module): 
-    def __init__(self, input_size=128, hidden_size=256, num_layer=2, num_classes=8, dropout=0.2):
+    def __init__(self, num_classes):
         super(LSTM_Model, self).__init__()
-        self.LSTM = nn.LSTM(input_size, hidden_size, num_layer, dropout=dropout, batch_first=True)
-        self.Linear = nn.Linear(hidden_size, num_classes)
-    def forward(self, x): 
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, stride=1)
+        self.activation1 = nn.ReLU()
+        self.maxPool1 = nn.MaxPool2d(2, 2)
+        self.dropout1 = nn.Dropout(0.4)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1)
+        self.activation2 = nn.ReLU()
+        self.maxPool2 = nn.MaxPool2d(2, 2)
+        self.dropout2 = nn.Dropout(0.2)
+
+        self.LSTM = nn.LSTM(64*8, 128, 2, dropout=0.3, batch_first=True)
+        self.Linear = nn.Linear(128, num_classes)
+
+    def forward(self, x):
+        batch_size, channels, length, timesteps = x.size()
+        x = self.conv1(x)
+        x = self.activation1(x)
+        x = self.maxPool1(x)
+        x = self.conv2(x)
+        x = self.activation2(x)
+        x = self.maxPool2(x)
+        x = x.view(x.size(0), x.size(3), -1)
         x, _ = self.LSTM(x)
         x = x[:, -1, :]
         x = self.Linear(x)
         return x
 
 
-def train(dataset_x, dataset_y, num_classes, hidden_size): 
+def train(train_loader, num_classes, epochs): 
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    model = LSTM_Model(hidden_size=hidden_size, num_classes=num_classes).to(device) 
+
+    model = LSTM_Model(num_classes=num_classes).to(device) 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    for e in range(100): 
-        accuracy = 0
-        total_loss = 0
-        model.train()
-        dataset_x, dataset_y = dataset_x.to(device), dataset_y.to(device)
-        optimizer.zero_grad()
-        outputs = model(dataset_x)
-        loss = criterion(outputs, dataset_y)
-        loss.backward()
-        optimizer.step()
+    for epoch in range(epochs): 
+        model.train() 
+        running_loss = 0.0
+        accurate = 0 
+        total = 0 
+        for i, (data, labels) in enumerate(train_loader):
+            data, labels = data.to(device), labels.to(device)
 
-        total_loss += loss.item()
-        predicted = torch.argmax(outputs, 1)
-        epoch_loss = total_loss/len(dataset_x)
-        accuracy += (predicted == dataset_y).sum().item()
-        accuracy = (accuracy / len(dataset_y)) * 100
-        print(f"Epoch[{e+1}/{100}], Loss: {epoch_loss:.4f}, Accuracy: {accuracy:.2f}%")
+            optimizer.zero_grad()
+            outputs = model(data)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step() 
+
+            _, predicted = torch.max(outputs, 1)
+            accurate += (predicted == labels).sum().item()
+            total += labels.size(0)
+            running_loss += loss.item()
+        
+        epoch_loss = running_loss/len(train_loader)
+        epoch_accuracy = 100 * (accurate/total)
+        print(f"Epoch[{epoch+1}/{epochs}], Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.2f}%")
 
     torch.save(model.state_dict(), f'./models/speech_recognition_model.pth')
 
 ## TODO finish this to run the saved model on the test dataset for evaluating
-def eval(dataset_x, dataset_y, num_classes): 
+def eval(test_loader, num_classes): 
     model = LSTM_Model(num_classes=num_classes)
     model.load_state_dict(torch.load("./models/speech_recognition_model.pth"))
     model.eval()
     predictions = [] 
+    true_labels = []
     with torch.no_grad(): 
-        output = model(dataset_x)
-        _, prediction = torch.max(output, 1)
-        print(f"Test Accuracy: {accuracy_score(dataset_y, prediction)*100:.2f}%")  
-
-        confusions = confusion_matrix(dataset_y, prediction)
-        print(confusions)
-        matrix = ConfusionMatrixDisplay(confusion_matrix=confusions)
-        matrix.plot()
-        plt.savefig('./matrix.png')
+        for i, (data, labels) in enumerate(test_loader):
+            output = model(data)
+            _, prediction = torch.max(output, 1)
+            prediction = prediction.tolist()
+            labels = labels.tolist()
+            predictions += prediction
+            true_labels += labels
+        
+    precision = precision_score(true_labels, predictions, average='macro') *100
+    accuracy = accuracy_score(true_labels, predictions) *100
+    recall = recall_score(true_labels, predictions, average='macro') * 100
+    confusions = confusion_matrix(true_labels, predictions)
+    print(f"Precision: {precision:.2f}, Recall: {recall:.4f}, Accuracy: {accuracy:.2f}%")
+    matrix = ConfusionMatrixDisplay(confusion_matrix=confusions)
+    matrix.plot()
+    plt.savefig('./matrix.png')
 
 
 def predict(audio_file): 
