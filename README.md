@@ -44,6 +44,8 @@ Our code is split into corresponding files: <br>
 - preprocessing.py: this file contains functions used to process and load the data so that it can be used by the model
 - data_loading.py: this file contains functions to extract features and load datsets into dataloaders to be used by the model
 - model.py: this file contains the model architecture and the corresponding functions associated with the model
+- models: folder that stores all the saved models from tarining
+- emojis: folder containing all the emojis that can be displayed by the application
 
 # Evaluation
 Our model did not perform as well as we hoped, as we happen to have a bit of overfittinh. Therefore, the application is unable to accurately detect a few of the emotions. The application also picks up on noise, so it is randomly displaying emojis even when nothing is being said. This is something that we will need to look into fixing in the future. <br> 
