@@ -16,6 +16,11 @@ our project uses the OpenAI API to generate responses from a GPT model, so an AP
 ```bash
 $ python3 main.py
 ```
+The model might need to be trained again to run the program due to large file size, we could not include them in the submissions, can be trained with the following: 
+```bash
+$ python3 traing.py
+```
+
 
 # Structure
 ## Data 
