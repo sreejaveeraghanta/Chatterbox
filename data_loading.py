@@ -22,7 +22,7 @@ def extract_features(data_frame):
 def create_train_test_sets(data_frame): 
     X = extract_features(data_frame)
     y = data_frame['labels'].values
-    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
     x_train = torch.tensor(np.array(x_train), dtype=torch.float32)
     x_test = torch.tensor(np.array(x_test), dtype=torch.float32)

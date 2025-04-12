@@ -3,23 +3,10 @@ from gtts import gTTS
 import pygame
 from openai import OpenAI
 from pygame import mixer
-from model import *
+from model import predict
 import numpy as np
-import librosa
-def extract_mel_spectrogram(file_path, sr=22050, n_mels=128, hop_length=512):
-    """Extracts a Mel spectrogram from an audio file using librosa."""
-    #loading the audio files 
-    y, sr = librosa.load(file_path, sr=sr)
-    #compute mel spectrogram
-    mel_spec = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=n_mels, hop_length=hop_length)
-    #power to db
-    mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max) 
-    if mel_spec_db.shape[1] > 128: 
-        mel_spec_db = mel_spec_db[:, :128]
-    if mel_spec_db.shape[1] < 128: 
-        padding = 128 - mel_spec_db.shape[1]
-        mel_spec_db = np.pad(mel_spec_db, ((0,0), (0, padding)), mode='constant')
-    return mel_spec_db
+import threading
+
 # for speech recognition from microphone
 recognizer = sr.Recognizer()
 
@@ -33,56 +20,79 @@ for i, name in enumerate(sr.Microphone.list_microphone_names()):
     print(i,":", name)
 
 mic_ind = int(input("select microphone index from list: "))
-file = './1002_DFA_ANG_XX.wav'
-features = torch.tensor(extract_mel_spectrogram(file), dtype=torch.float32)
-print(features)
-
-emotion = predict(features)
-print(emotion)
 
 client = OpenAI()
 
 def get_response(prompt):
     response = client.chat.completions.create(
         model='gpt-3.5-turbo', 
-        messages=[{'role': "user", "content": prompt}])
+        messages=[{'role': "user", "content": prompt}], 
+        n = 1,
+        max_tokens=100, 
+        stop=None,
+        temperature=0.7)
     return response.choices[0].message.content.strip()
+
+def listen_and_record():
+    while True:
+        with sr.Microphone(device_index=mic_ind) as source: 
+            recognizer.adjust_for_ambient_noise(source)
+            recognizer.energy_threshold = 400
+            try: 
+                audio = recognizer.listen(source, timeout=10, phrase_time_limit=30) 
+                with open('input.wav', "wb") as input_audio:
+                    input_audio.write(audio.get_wav_data()) 
+
+                text = recognizer.recognize_google(audio)
+                print("The text from you", text)
+            except: 
+                print("wating for you to say something")
+                continue
+
+            response = get_response(text)
+
+            speech = gTTS(response, slow=False)
+            speech.save("response.mp3")
+            mixer.music.load("response.mp3")
+            mixer.music.play()
+
+
+thread_listen_record = threading.Thread(target=listen_and_record, daemon=True)
+thread_listen_record.start()
 
 running = True
 while (running): 
-    # for event in pygame.event.get(): 
-    #     if event.type == pygame.QUIT: 
-    #         running = False
-    # screen.fill((0,0,0))
-    if (emotion == "angry"):
+    ## pick a different model for prediction by changing the second argument
+    ## possible model_types "ravdess", "crema", "both"
+    emotion = predict('input.wav', model_type="ravdess")
+    for event in pygame.event.get(): 
+        if event.type == pygame.QUIT: 
+            running = False
+    screen.fill((0,0,0))
+    if (emotion == "anger"):
         image = pygame.image.load('./emojis/anger.png')
         image = pygame.transform.scale(image, (400, 400))
-
+    elif (emotion == "happy"):
+        image = pygame.image.load('./emojis/happy.png')
+        image = pygame.transform.scale(image, (400, 400))
+    elif (emotion == "sad"):
+        image = pygame.image.load('./emojis/sad.png')
+        image = pygame.transform.scale(image, (400, 400))
+    elif (emotion == "surprised"):
+        image = pygame.image.load('./emojis/surprised.png')
+        image = pygame.transform.scale(image, (400, 400))
+    elif (emotion == "disgust"):
+        image = pygame.image.load('./emojis/disgust.png')
+        image = pygame.transform.scale(image, (400, 400))
+    elif (emotion == "fear"):
+        image = pygame.image.load('./emojis/fear.png')
+        image = pygame.transform.scale(image, (400, 400))
     else: 
         image = pygame.image.load('./emojis/neutral.png')
         image = pygame.transform.scale(image, (400, 400))
 
-    # screen.blit(image, (100, 100))
-    # pygame.display.flip()
-    with sr.Microphone(device_index=mic_ind) as source: 
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source) 
-        try: 
-            text = recognizer.recognize_google(audio)
-            print("The text from you", text)
-        except: 
-            print("wating for you to say something")
-            continue
-        if  text == "stop": 
-            running = False
-            break
-
-        response = get_response(text)
-
-        speech = gTTS(response, slow=False)
-        speech.save("response.mp3")
-        mixer.music.load("response.mp3")
-        mixer.music.play()
+    screen.blit(image, (100, 100))
+    pygame.display.flip()
 pygame.quit()
 
 

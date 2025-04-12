@@ -70,3 +70,18 @@ def process_both_datasets():
     labels = label_encoder.fit_transform(data['emotions'])
     data['labels'] = labels
     return data
+
+
+def get_labels(model_type): 
+    if model_type == "crema": 
+        crema_df = process_crema_data()
+        labels = dict(zip(crema_df['labels'], crema_df['emotions']))
+        return labels
+    if model_type == "ravdess":
+        ravdess_df = process_ravdess_data()
+        labels = dict(zip(ravdess_df['labels'], ravdess_df['emotions']))
+        return labels
+    if model_type == "both":
+        both_df = process_both_datasets()
+        labels = dict(zip(both_df['labels'], both_df['emotions']))
+        return labels
