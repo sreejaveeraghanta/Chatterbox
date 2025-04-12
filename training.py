@@ -1,7 +1,4 @@
-# Dataset from Kaggle: https://www.kaggle.com/datasets/dmitrybabko/speech-emotion-recognition-en?resource=download
-# Used the datasets Ravdess and Crema to train our model
 
-# imports
 import torch 
 import numpy as np
 from model import *

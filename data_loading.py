@@ -5,6 +5,8 @@ from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 
+# gets mfcc (mel-frequency cepstral coefficient) of the audio data to 
+# better find what the emotion is
 def get_mfcc(audio_file):
     y, sr = librosa.load(audio_file, duration=5, offset=0.5)
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40)
@@ -13,12 +15,14 @@ def get_mfcc(audio_file):
     mfcc = (mfcc - np.mean(mfcc))/(np.std(mfcc))
     return mfcc
 
+# extract the mfccs from the data
 def extract_features(data_frame):
     features = []
     for file in data_frame['paths']: 
         features.append(get_mfcc(file))
     return features
 
+# Create the sets that the model can use for training and testing
 def create_train_test_sets(data_frame): 
     X = extract_features(data_frame)
     y = data_frame['labels'].values
@@ -35,6 +39,7 @@ def create_train_test_sets(data_frame):
 
     return x_train, x_test, y_train, y_test
 
+# Load the data loaders for the train and test sets
 def get_dataLoaders(data_frame, batch_size):
     x_train, x_test, y_train, y_test = create_train_test_sets(data_frame)
     train_dataset = TensorDataset(x_train, y_train) 

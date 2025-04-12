@@ -5,7 +5,9 @@ from sklearn.metrics import precision_score, recall_score, f1_score, confusion_m
 from matplotlib import pyplot as plt
 from preprocessing import get_labels
 from data_loading import get_mfcc
-
+# Model architecture for training 
+# This architecutre is similar to the one from our assignment 3 (for training gesture data) 
+# Trains with 3 CNN layer, 1 LSTM and a final linear layer
 class LSTM_Model(nn.Module): 
     def __init__(self, num_classes):
         super(LSTM_Model, self).__init__()
@@ -47,6 +49,7 @@ class LSTM_Model(nn.Module):
         return x
 
 
+# Training function, similar to the assignments
 def train(train_loader, num_classes, epochs, model_type): 
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
@@ -78,7 +81,7 @@ def train(train_loader, num_classes, epochs, model_type):
 
     torch.save(model.state_dict(), f'./models/speech_recognition_model_{model_type}.pth')
 
-## TODO finish this to run the saved model on the test dataset for evaluating
+# Evaluation function, also similar to the assignments
 def eval(test_loader, num_classes, model_type): 
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     model = LSTM_Model(num_classes=num_classes).to(device)
@@ -106,6 +109,7 @@ def eval(test_loader, num_classes, model_type):
 
 
 ## gets a prediction for a single audio file (for the main application)
+# Code similar to the eval function from the assignments
 def predict(audio_file, model_type): 
     if (model_type == "ravdess" or model_type == "both"): 
         num_classes = 8

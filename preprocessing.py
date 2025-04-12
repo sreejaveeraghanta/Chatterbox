@@ -1,9 +1,13 @@
+# Dataset from Kaggle: https://www.kaggle.com/datasets/dmitrybabko/speech-emotion-recognition-en?resource=download
+# Used the datasets Ravdess and Crema-d to train our model
+
 import os
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
-
+# does preprocessing on the ravdess dataset and encodes the labels for use in the model 
+# using the LabelEncoder from sklearn.preprocessing
 def process_ravdess_data(): 
     ravdess_folder = './data/Ravdess/audio_speech_actors_01-24'
     label_encoder = LabelEncoder()
@@ -32,7 +36,8 @@ def process_ravdess_data():
     ravdess_df['labels'] = int_labels
     return ravdess_df
 
-
+# processes and loads the data from the CREMA dataset folder and does labelling in a similar manner 
+# to the ravdess dataset loading
 def process_crema_data():
     crema_folder = './data/Crema'
     label_encoder = LabelEncoder()
@@ -57,8 +62,9 @@ def process_crema_data():
     crema_df['labels'] = int_labels
     return crema_df
 
-## Combines both the Crema and Ravdess datasets into a larger dataset and returns a 
-## dataframe for use
+# Combines both the Crema and Ravdess datasets into a larger dataset and returns a 
+# dataframe for use, drops previous label encodings and encodes the labels again to 
+# better represent the data from the combined datasets
 def process_both_datasets(): 
     crema = process_crema_data() 
     ravdess = process_ravdess_data()
@@ -71,7 +77,7 @@ def process_both_datasets():
     data['labels'] = labels
     return data
 
-
+# returns the decoded labels corresponding to the dataset being used 
 def get_labels(model_type): 
     if model_type == "crema": 
         crema_df = process_crema_data()
