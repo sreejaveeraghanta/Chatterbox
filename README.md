@@ -1,15 +1,21 @@
 # Install Dependencies and Packages 
-$ python3 -m venv <env_name> <br>
-$ source <env_name>/bin/activate <br>
-$ pip3 install -r requirements.txt <br>
-
+```bash
+$ python3 -m venv <env_name> 
+$ source <env_name>/bin/activate 
+$ pip3 install -r requirements.txt 
+```
 if on a MacOS: <br> 
-$ brew install portaudio <br> 
+```bash
+$ brew install portaudio 
+```
 before installing requirements
+
 
 # Run the program
 our project uses the OpenAI API to generate responses from a GPT model, so an API key is needed to run the main program (main.py)<br>
+```bash
 $ python3 main.py
+```
 
 # Structure
 ## Data 
