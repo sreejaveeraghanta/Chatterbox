@@ -38,6 +38,7 @@ def listen_and_record():
         with sr.Microphone(device_index=mic_ind) as source: 
             recognizer.adjust_for_ambient_noise(source)
             recognizer.energy_threshold = 400
+            recognizer.pause_threshold = 0.6
             try: 
                 audio = recognizer.listen(source, timeout=10, phrase_time_limit=30) 
                 with open('input.wav', "wb") as input_audio:
